@@ -35,6 +35,9 @@ public class Main {
     private static String filePath;
 
     private static int topSize;
+    private static int rightSize;
+    private static int bottomSize;
+    private static int leftSize;
 
     public static void main(String[] args) {
         Display display = new Display();
@@ -69,11 +72,17 @@ public class Main {
         Button nextBtn = new Button(toolsContainer, SWT.PUSH);
         nextBtn.setText("Вперед ▶");
 
-        Spinner top = new Spinner(toolsContainer, SWT.BORDER);
-        top.setMinimum(0);       // Минимальное значение
-        top.setMaximum(50);     // Максимальное значение
-        top.setSelection(0);    // Значение по умолчанию
-        top.setIncrement(1);
+        Spinner topBottom = new Spinner(toolsContainer, SWT.BORDER);
+        topBottom.setMinimum(0);       // Минимальное значение
+        topBottom.setMaximum(50);     // Максимальное значение
+        topBottom.setSelection(0);    // Значение по умолчанию
+        topBottom.setIncrement(1);
+
+        Spinner leftRight = new Spinner(toolsContainer, SWT.BORDER);
+        leftRight.setMinimum(0);       // Минимальное значение
+        leftRight.setMaximum(50);     // Максимальное значение
+        leftRight.setSelection(0);    // Значение по умолчанию
+        leftRight.setIncrement(1);
 
         // =================================================================
         // ОБЛАСТЬ ОТРИСОВКИ (CANVAS)
@@ -137,12 +146,31 @@ public class Main {
             displayPage(display, canvas, shell);
         });
 
-        top.addSelectionListener(new SelectionAdapter() {
+        topBottom.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 // Получаем актуальное числовое значение
-                int currentValue = top.getSelection();
-                System.out.println("Значение изменено (Top): " + currentValue);
+                int currentValue = topBottom.getSelection();
+                System.out.println("Значение изменено (Top-Bottom): " + currentValue);
+
+                topSize = currentValue;
+                bottomSize = currentValue;
+
+                displayPage(display, canvas, shell);
+            }
+        });
+
+        leftRight.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                // Получаем актуальное числовое значение
+                int currentValue = leftRight.getSelection();
+                System.out.println("Значение изменено (Left-Right): " + currentValue);
+
+                rightSize = currentValue;
+                leftSize = currentValue;
+
+                displayPage(display, canvas, shell);
             }
         });
 
@@ -185,7 +213,7 @@ public class Main {
         }
     }
 
-    private static Image convertToSwtImage(Display display, BufferedImage bufferedImage) {
+    private static Image convertToSwtImage1(Display display, BufferedImage bufferedImage) {
         int width = bufferedImage.getWidth();
         int height = bufferedImage.getHeight();
 
@@ -207,6 +235,69 @@ public class Main {
 
         return new Image(display, imageData);
     }
+
+    /**
+     * Конвертирует BufferedImage в SWT Image с одновременным отсечением полей, заданных в процентах.
+     */
+    private static Image convertToSwtImage(Display display, BufferedImage bufferedImage) {
+
+        System.out.println("topSize " + topSize);
+        System.out.println("rightSize " + rightSize);
+        System.out.println("bottomSize " + bottomSize);
+        System.out.println("leftSize " + leftSize);
+
+        int srcWidth = bufferedImage.getWidth();
+        int srcHeight = bufferedImage.getHeight();
+
+        // 1. Вычисляем смещения и размеры новой области в пикселях
+        int startX = (int) Math.round(srcWidth * (leftSize / 100.0));
+        int startY = (int) Math.round(srcHeight * (topSize / 100.0));
+
+        int endX = srcWidth - (int) Math.round(srcWidth * (rightSize / 100.0));
+        int endY = srcHeight - (int) Math.round(srcHeight * (bottomSize / 100.0));
+
+        // Вычисляем финальные размеры
+        int targetWidth = endX - startX;
+        int targetHeight = endY - startY;
+
+        // Защита: если поля отрезали картинку целиком или ушли в минус, возвращаем пустой 1x1 пиксель
+        if (targetWidth <= 0 || targetHeight <= 0) {
+            ImageData emptyData = new ImageData(1, 1, 32, new PaletteData(0xFF0000, 0xFF00, 0xFF));
+            return new Image(display, emptyData);
+        }
+
+        // 2. Гарантируем правильный цветовой формат исходного изображения
+        if (bufferedImage.getType() != BufferedImage.TYPE_INT_RGB) {
+            BufferedImage newImage = new BufferedImage(srcWidth, srcHeight, BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics g = newImage.getGraphics();
+            g.drawImage(bufferedImage, 0, 0, null);
+            g.dispose();
+            bufferedImage = newImage;
+        }
+
+        // Получаем массив пикселей исходного (полного) изображения
+        int[] srcData = ((DataBufferInt) bufferedImage.getRaster().getDataBuffer()).getData();
+
+        // Создаем структуру для SWT ImageData с усеченными размерами
+        PaletteData palette = new PaletteData(0xFF0000, 0xFF00, 0xFF);
+        ImageData imageData = new ImageData(targetWidth, targetHeight, 32, palette);
+
+        // 3. Быстрый перенос только нужного прямоугольника данных
+        int[] swtRowPixels = new int[targetWidth];
+        for (int y = 0; y < targetHeight; y++) {
+            // Вычисляем индекс начала строки в исходном массиве с учетом смещения по Y и X
+            int srcPos = (startY + y) * srcWidth + startX;
+
+            // Копируем только пиксели targetWidth из строки исходного массива
+            System.arraycopy(srcData, srcPos, swtRowPixels, 0, targetWidth);
+
+            // Записываем строку в результирующий SWT ImageData
+            imageData.setPixels(0, y, targetWidth, swtRowPixels, 0);
+        }
+
+        return new Image(display, imageData);
+    }
+
 }
 
 
