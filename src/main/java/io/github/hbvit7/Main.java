@@ -5,6 +5,8 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.GestureEvent;
+import org.eclipse.swt.events.GestureListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -114,6 +116,29 @@ public class Main {
             }
         });
 
+        canvas.addGestureListener(new GestureListener() {
+            @Override
+            public void gesture(GestureEvent e) {
+                System.out.println(e.detail);
+                // Проверяем, что жест является свайпом
+                if (e.detail == SWT.GESTURE_SWIPE) {
+                    // Определяем направление свайпа с помощью полей x и y
+                    // x = 1 (вправо), x = -1 (влево)
+                    // y = 1 (вниз), y = -1 (вверх)
+
+                    if (e.x != 0) {
+                        if (e.x > 0) {
+                            System.out.println("Свайп вправо (Swipe Right)");
+                            prevPage(display, canvas, shell);
+                        } else {
+                            System.out.println("Свайп влево (Swipe Left)");
+                            nextPage(display, canvas, shell);
+                        }
+                    }
+                }
+            }
+        });
+
         // Перерисовка при изменении размера окна
         canvas.addListener(SWT.Resize, event -> canvas.redraw());
 
@@ -129,21 +154,11 @@ public class Main {
         });
 
         prevBtn.addListener(SWT.Selection, event -> {
-            if (currentPage == 0) {
-                return;
-            }
-            System.out.println("prev");
-            currentPage--;
-            displayPage(display, canvas, shell);
+            prevPage(display, canvas, shell);
         });
 
         nextBtn.addListener(SWT.Selection, event -> {
-            if (currentPage == maxPage) {
-                return;
-            }
-            System.out.println("next");
-            currentPage++;
-            displayPage(display, canvas, shell);
+            nextPage(display, canvas, shell);
         });
 
         topBottom.addSelectionListener(new SelectionAdapter() {
@@ -181,6 +196,24 @@ public class Main {
 
         if (swtImage != null && !swtImage.isDisposed()) swtImage.dispose();
         display.dispose();
+    }
+
+    private static void nextPage(Display display, Canvas canvas, Shell shell) {
+        if (currentPage == maxPage) {
+            return;
+        }
+        System.out.println("next");
+        currentPage++;
+        displayPage(display, canvas, shell);
+    }
+
+    private static void prevPage(Display display, Canvas canvas, Shell shell) {
+        if (currentPage == 0) {
+            return;
+        }
+        System.out.println("prev");
+        currentPage--;
+        displayPage(display, canvas, shell);
     }
 
     private static void displayPage(Display display, Canvas canvas, Shell shell) {
