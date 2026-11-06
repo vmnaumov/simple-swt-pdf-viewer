@@ -56,4 +56,37 @@
             </dependencies>
         </profile>
     </profiles>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.8.0</version> <!-- Используйте актуальную версию -->
+                <configuration>
+                    <!-- Настройка манифеста для запуска JAR через java -jar -->
+                    <archive>
+                        <manifest>
+                            <!-- Укажите здесь полный путь к вашему классу с методом main() -->
+                            <mainClass>io.github.hbvit7.Main</mainClass>
+                        </manifest>
+                    </archive>
+                    <!-- Использование встроенного дескриптора для сборки JAR с зависимостями -->
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <!-- Привязка к фазе package (сборка будет происходить при выполнении mvn package) -->
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
