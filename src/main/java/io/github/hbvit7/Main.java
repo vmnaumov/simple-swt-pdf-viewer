@@ -7,6 +7,7 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.GestureEvent;
 import org.eclipse.swt.events.GestureListener;
+import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -138,6 +139,16 @@ public class Main {
                 }
             }
         });
+
+        canvas.addMouseListener(MouseListener.mouseUpAdapter(e -> {
+            System.out.println("Кнопка нажата!");
+            System.out.println(canvas.getSize().x);
+            if (e.x < canvas.getSize().x / 2) {
+                prevPage(display, canvas, shell);
+            } else {
+                nextPage(display, canvas, shell);
+            }
+        }));
 
         // Перерисовка при изменении размера окна
         canvas.addListener(SWT.Resize, event -> canvas.redraw());
