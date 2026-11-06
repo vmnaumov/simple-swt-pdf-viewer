@@ -89,6 +89,9 @@ public class Main {
         leftRight.setSelection(0);    // Значение по умолчанию
         leftRight.setIncrement(1);
 
+        Button closeBtn = new Button(toolsContainer, SWT.PUSH);
+        closeBtn.setText("Закрыть");
+
         // =================================================================
         // ОБЛАСТЬ ОТРИСОВКИ (CANVAS)
         // =================================================================
@@ -215,6 +218,11 @@ public class Main {
 
                 displayPage(display, canvas, shell);
             }
+        });
+
+        closeBtn.addListener(SWT.Selection, event -> {
+            swtImage = null;
+            canvas.redraw();
         });
 
         shell.open();
