@@ -5,6 +5,8 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.PaletteData;
@@ -22,18 +24,22 @@ import org.eclipse.swt.widgets.Shell;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import org.eclipse.swt.widgets.Spinner;
 
 public class Main {
 
+    private static final String TITLE = "PDF Viewer с панелью инструментов";
     private static Image swtImage = null; // Текущая страница PDF
     private static int currentPage;
     private static int maxPage;
     private static String filePath;
 
+    private static int topSize;
+
     public static void main(String[] args) {
         Display display = new Display();
         Shell shell = new Shell(display);
-        shell.setText("PDF Viewer с панелью инструментов");
+        shell.setText(TITLE);
         shell.setSize(700, 900);
 
         // Главный макет окна — вертикальная сетка из 1 колонки
@@ -62,6 +68,12 @@ public class Main {
 
         Button nextBtn = new Button(toolsContainer, SWT.PUSH);
         nextBtn.setText("Вперед ▶");
+
+        Spinner top = new Spinner(toolsContainer, SWT.BORDER);
+        top.setMinimum(0);       // Минимальное значение
+        top.setMaximum(50);     // Максимальное значение
+        top.setSelection(0);    // Значение по умолчанию
+        top.setIncrement(1);
 
         // =================================================================
         // ОБЛАСТЬ ОТРИСОВКИ (CANVAS)
@@ -125,6 +137,15 @@ public class Main {
             displayPage(display, canvas, shell);
         });
 
+        top.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                // Получаем актуальное числовое значение
+                int currentValue = top.getSelection();
+                System.out.println("Значение изменено (Top): " + currentValue);
+            }
+        });
+
         shell.open();
         while (!shell.isDisposed()) {
             if (!display.readAndDispatch()) display.sleep();
@@ -149,6 +170,10 @@ public class Main {
                 box.open();
                 e.printStackTrace();
             }
+        }
+
+        if (maxPage > 0) {
+            shell.setText(TITLE + " " + (currentPage + 1) + " / " + (maxPage + 1));
         }
     }
 
