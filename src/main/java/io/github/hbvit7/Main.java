@@ -7,6 +7,8 @@ import org.apache.pdfbox.rendering.PDFRenderer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.GestureEvent;
 import org.eclipse.swt.events.GestureListener;
+import org.eclipse.swt.events.KeyAdapter;
+import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.MouseListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -149,6 +151,21 @@ public class Main {
                 nextPage(display, canvas, shell);
             }
         }));
+
+        canvas.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                if (e.keyCode == SWT.ARROW_RIGHT) {
+                    System.out.println("Нажата стрелка ВПРАВО");
+                    nextPage(display, canvas, shell);
+                }
+
+                if (e.keyCode == SWT.ARROW_LEFT) {
+                    System.out.println("Нажата стрелка ВЛЕВО");
+                    prevPage(display, canvas, shell);
+                }
+            }
+        });
 
         // Перерисовка при изменении размера окна
         canvas.addListener(SWT.Resize, event -> canvas.redraw());
