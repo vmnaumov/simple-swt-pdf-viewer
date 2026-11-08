@@ -104,19 +104,27 @@ public class Main {
                 Rectangle clientArea = canvas.getClientArea();
                 Rectangle imgBounds = swtImage.getBounds();
 
-                double scaleX = (double) clientArea.width / imgBounds.width;
-                double scaleY = (double) clientArea.height / imgBounds.height;
-                double scale = Math.min(scaleX, scaleY);
-
-                int newWidth = (int) (imgBounds.width * scale);
-                int newHeight = (int) (imgBounds.height * scale);
-
-                int x = (clientArea.width - newWidth) / 2;
-                int y = (clientArea.height - newHeight) / 2;
+//                double scaleX = (double) clientArea.width / imgBounds.width;
+//                double scaleY = (double) clientArea.height / imgBounds.height;
+//                double scale = Math.min(scaleX, scaleY);
+//
+//                int newWidth = (int) (imgBounds.width * scale);
+//                int newHeight = (int) (imgBounds.height * scale);
+//
+//                int x = (clientArea.width - newWidth) / 2;
+//                int y = (clientArea.height - newHeight) / 2;
 
                 e.gc.setAntialias(SWT.ON);
                 e.gc.setInterpolation(SWT.HIGH);
-                e.gc.drawImage(swtImage, 0, 0, imgBounds.width, imgBounds.height, x, y, newWidth, newHeight);
+//                e.gc.drawImage(swtImage, 0, 0, imgBounds.width, imgBounds.height, x, y, newWidth, newHeight);
+
+                // Отрисовка в режиме "Заливка/Растяжение":
+                // Берем картинку (от 0,0 до imgBounds.width/height)
+                // и жестко вписываем в Canvas (от 0,0 до clientArea.width/height)
+                e.gc.drawImage(swtImage,
+                        0, 0, imgBounds.width, imgBounds.height, // Откуда берем (исходник)
+                        0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                );
             } else {
                 e.gc.drawString("Используйте панель инструментов сверху, чтобы открыть документ.", 20, 20);
             }
