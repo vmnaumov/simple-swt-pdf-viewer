@@ -48,6 +48,8 @@ public class Main {
 
     private static BufferedImage rawPdfImage = null; // Исходный целый растр страницы PDF
 
+    private static boolean isTopPage = true;
+
     // Переменная для отслеживания угла поворота (0, 90, 180, 270)
     private static int rotationDegrees = 0;
 
@@ -132,10 +134,38 @@ public class Main {
                 // Отрисовка в режиме "Заливка/Растяжение":
                 // Берем картинку (от 0,0 до imgBounds.width/height)
                 // и жестко вписываем в Canvas (от 0,0 до clientArea.width/height)
-                e.gc.drawImage(swtImage,
-                        0, 0, imgBounds.width, imgBounds.height, // Откуда берем (исходник)
-                        0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
-                );
+                if (rotationDegrees % 180 == 0) {
+                    e.gc.drawImage(swtImage,
+                            0, 0, imgBounds.width, imgBounds.height, // Откуда берем (исходник)
+                            0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                    );
+                } else if (rotationDegrees == 90) {
+                    if (isTopPage) {
+                        e.gc.drawImage(swtImage,
+                                imgBounds.width / 2, 0, imgBounds.width / 2 - 1,
+                                imgBounds.height, // Откуда берем (исходник)
+                                0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                        );
+                    } else {
+                        e.gc.drawImage(swtImage,
+                                0, 0, imgBounds.width / 2, imgBounds.height, // Откуда берем (исходник)
+                                0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                        );
+                    }
+                } else if (rotationDegrees == 270) {
+                    if (isTopPage) {
+                        e.gc.drawImage(swtImage,
+                                0, 0, imgBounds.width / 2, imgBounds.height, // Откуда берем (исходник)
+                                0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                        );
+                    } else {
+                        e.gc.drawImage(swtImage,
+                                imgBounds.width / 2, 0, imgBounds.width / 2 - 1,
+                                imgBounds.height, // Откуда берем (исходник)
+                                0, 0, clientArea.width, clientArea.height // Куда рисуем (весь Canvas)
+                        );
+                    }
+                }
             } else {
                 e.gc.drawString("Используйте панель инструментов сверху, чтобы открыть документ.", 20, 20);
             }
@@ -284,7 +314,16 @@ public class Main {
             return;
         }
         System.out.println("next");
-        currentPage++;
+        if (rotationDegrees == 90 || rotationDegrees == 270) {
+            if (isTopPage) {
+                isTopPage = false;
+            } else {
+                isTopPage = true;
+                currentPage++;
+            }
+        } else {
+            currentPage++;
+        }
         displayPage(display, canvas, shell);
     }
 
