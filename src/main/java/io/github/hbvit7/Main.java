@@ -1,5 +1,7 @@
 package io.github.hbvit7;
 
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 import java.awt.image.DataBufferInt;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -43,6 +45,11 @@ public class Main {
     private static int rightSize;
     private static int bottomSize;
     private static int leftSize;
+
+    private static BufferedImage rawPdfImage = null; // Исходный целый растр страницы PDF
+
+    // Переменная для отслеживания угла поворота (0, 90, 180, 270)
+    private static int rotationDegrees = 0;
 
     public static void main(String[] args) {
         Display display = new Display();
@@ -91,6 +98,10 @@ public class Main {
 
         Button closeBtn = new Button(toolsContainer, SWT.PUSH);
         closeBtn.setText("Закрыть");
+
+        Button rotate = new Button(toolsContainer, SWT.PUSH);
+        rotate.setText("Повернуть");
+        rotate.setEnabled(false); // Отключена, пока не загружен файл
 
         // =================================================================
         // ОБЛАСТЬ ОТРИСОВКИ (CANVAS)
@@ -190,6 +201,7 @@ public class Main {
             currentPage = 0;
 
             displayPage(display, canvas, shell);
+            rotate.setEnabled(true); // Активируем кнопку поворота
         });
 
         prevBtn.addListener(SWT.Selection, event -> {
@@ -231,6 +243,31 @@ public class Main {
         closeBtn.addListener(SWT.Selection, event -> {
             swtImage = null;
             canvas.redraw();
+            rotate.setEnabled(false); // Дезактивируем кнопку поворота
+        });
+
+        rotate.addListener(SWT.Selection, event -> {
+            if (swtImage != null) {
+                // Увеличиваем угол на 90 градусов (цикл в пределах 0-270)
+                rotationDegrees = (rotationDegrees + 90) % 360;
+
+                // Пересоздаем изображение с новым поворотом и старыми процентами обрезки
+                if (swtImage != null) swtImage.dispose();
+
+                try {
+                    rawPdfImage = renderPdfPage(filePath, currentPage);
+                } catch (Exception e) {
+                    MessageBox box = new MessageBox(shell, SWT.ICON_ERROR);
+                    box.setMessage("Ошибка при чтении PDF: " + e.getMessage());
+                    box.open();
+                    e.printStackTrace();
+                }
+
+                swtImage = convertToSwtImage(display, rawPdfImage);
+
+                // Обновляем холст
+                canvas.redraw();
+            }
         });
 
         shell.open();
@@ -323,53 +360,67 @@ public class Main {
         System.out.println("bottomSize " + bottomSize);
         System.out.println("leftSize " + leftSize);
 
-        int srcWidth = bufferedImage.getWidth();
-        int srcHeight = bufferedImage.getHeight();
+// 1. Поворот исходного BufferedImage средствами Java 2D
+        BufferedImage rotatedImage = bufferedImage;
+        if (rotationDegrees != 0) {
+            int w = bufferedImage.getWidth();
+            int h = bufferedImage.getHeight();
 
-        // 1. Вычисляем смещения и размеры новой области в пикселях
-        int startX = (int) Math.round(srcWidth * (leftSize / 100.0));
-        int startY = (int) Math.round(srcHeight * (topSize / 100.0));
+            // Определяем новые размеры картинки в зависимости от угла
+            int newW = (rotationDegrees == 90 || rotationDegrees == 270) ? h : w;
+            int newH = (rotationDegrees == 90 || rotationDegrees == 270) ? w : h;
 
-        int endX = srcWidth - (int) Math.round(srcWidth * (rightSize / 100.0));
-        int endY = srcHeight - (int) Math.round(srcHeight * (bottomSize / 100.0));
+            rotatedImage = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_RGB);
 
-        // Вычисляем финальные размеры
+            Graphics2D g2d = rotatedImage.createGraphics();
+
+            // Вычисляем трансформацию вокруг центра
+            AffineTransform at = new AffineTransform();
+            at.translate((newW - w) / 2.0, (newH - h) / 2.0);
+            at.rotate(Math.toRadians(rotationDegrees), w / 2.0, h / 2.0);
+
+            g2d.drawRenderedImage(bufferedImage, at);
+            g2d.dispose();
+        }
+
+        // 2. Работаем с уже повернутым изображением для расчета обрезки
+        int rotatedW = rotatedImage.getWidth();
+        int rotatedH = rotatedImage.getHeight();
+
+        int startX;
+        int startY;
+        int endX;
+        int endY;
+
+        if (rotationDegrees % 180 == 0) {
+            startX = (int) Math.round(rotatedW * (leftSize / 100.0));
+            startY = (int) Math.round(rotatedH * (topSize / 100.0));
+            endX = rotatedW - (int) Math.round(rotatedW * (rightSize / 100.0));
+            endY = rotatedH - (int) Math.round(rotatedH * (bottomSize / 100.0));
+        } else {
+            startX = (int) Math.round(rotatedW * (topSize / 100.0));
+            startY = (int) Math.round(rotatedH * (leftSize / 100.0));
+            endX = rotatedW - (int) Math.round(rotatedW * (bottomSize / 100.0));
+            endY = rotatedH - (int) Math.round(rotatedH * (rightSize / 100.0));
+        }
+
         int targetWidth = endX - startX;
         int targetHeight = endY - startY;
 
-        // Защита: если поля отрезали картинку целиком или ушли в минус, возвращаем пустой 1x1 пиксель
         if (targetWidth <= 0 || targetHeight <= 0) {
-            ImageData emptyData = new ImageData(1, 1, 32, new PaletteData(0xFF0000, 0xFF00, 0xFF));
-            return new Image(display, emptyData);
+            return new Image(display, new ImageData(1, 1, 32, new PaletteData(0xFF0000, 0xFF00, 0xFF)));
         }
 
-        // 2. Гарантируем правильный цветовой формат исходного изображения
-        if (bufferedImage.getType() != BufferedImage.TYPE_INT_RGB) {
-            BufferedImage newImage = new BufferedImage(srcWidth, srcHeight, BufferedImage.TYPE_INT_RGB);
-            java.awt.Graphics g = newImage.getGraphics();
-            g.drawImage(bufferedImage, 0, 0, null);
-            g.dispose();
-            bufferedImage = newImage;
-        }
-
-        // Получаем массив пикселей исходного (полного) изображения
-        int[] srcData = ((DataBufferInt) bufferedImage.getRaster().getDataBuffer()).getData();
-
-        // Создаем структуру для SWT ImageData с усеченными размерами
+        // 3. Перенос пикселей в SWT ImageData
+        int[] data = ((DataBufferInt) rotatedImage.getRaster().getDataBuffer()).getData();
         PaletteData palette = new PaletteData(0xFF0000, 0xFF00, 0xFF);
         ImageData imageData = new ImageData(targetWidth, targetHeight, 32, palette);
 
-        // 3. Быстрый перенос только нужного прямоугольника данных
-        int[] swtRowPixels = new int[targetWidth];
+        int[] swtPixels = new int[targetWidth];
         for (int y = 0; y < targetHeight; y++) {
-            // Вычисляем индекс начала строки в исходном массиве с учетом смещения по Y и X
-            int srcPos = (startY + y) * srcWidth + startX;
-
-            // Копируем только пиксели targetWidth из строки исходного массива
-            System.arraycopy(srcData, srcPos, swtRowPixels, 0, targetWidth);
-
-            // Записываем строку в результирующий SWT ImageData
-            imageData.setPixels(0, y, targetWidth, swtRowPixels, 0);
+            int srcPos = (startY + y) * rotatedW + startX;
+            System.arraycopy(data, srcPos, swtPixels, 0, targetWidth);
+            imageData.setPixels(0, y, targetWidth, swtPixels, 0);
         }
 
         return new Image(display, imageData);
